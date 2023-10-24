@@ -1,6 +1,9 @@
 import Stack from './stack';
 import Konva from "konva";
 import { createMachine, interpret } from "xstate";
+import UndoManager from './undoManager.js'
+import UndoCommand from './undoCommand.js'
+import undoCommand from "./undoCommand.js";
 
 const stage = new Konva.Stage({
     container: "container",
@@ -17,6 +20,16 @@ stage.add(temporaire);
 
 const MAX_POINTS = 10;
 let polyline // La polyline en cours de construction;
+
+let buttonUndo = document.getElementById("undo")
+let buttonRedo = document.getElementById("redo")
+
+let undoManager = new UndoManager(buttonUndo, buttonRedo);
+
+buttonUndo.addEventListener("click", () => { undoManager.undo() })
+buttonRedo.addEventListener("click", () => {undoManager.redo() })
+
+
 
 const polylineMachine = createMachine(
     {
@@ -119,7 +132,8 @@ const polylineMachine = createMachine(
                 polyline.points(newPoints);
                 polyline.stroke("black"); // On change la couleur
                 // On sauvegarde la polyline dans la couche de dessin
-                dessin.add(polyline); // On l'ajoute à la couche de dessin
+                dessin.add(polyline);
+                undoManager.execute(new undoCommand(polyline, dessin))// On l'ajoute à la couche de dessin
             },
             addPoint: (context, event) => {
                 const pos = stage.getPointerPosition();
@@ -153,12 +167,16 @@ const polylineMachine = createMachine(
     }
 );
 
+/*const undoButton = document.getElementById("undo");
+const redoButton = document.getElementById("redo");
+const undoManager = new UndoManager();*/
+
 const polylineService = interpret(polylineMachine)
     .onTransition((state) => {
         console.log("Current state:", state.value);
     })
     .start();
-
+    
 stage.on("click", () => {
     polylineService.send("MOUSECLICK");
 });
@@ -171,3 +189,18 @@ window.addEventListener("keydown", (event) => {
     console.log("Key pressed:", event.key);
     polylineService.send(event.key);
 });
+    /*if(event.key == "u"){
+        undoManager.undo();
+    }
+    if(event.key == "r"){
+        undoManager.redo();
+    }
+});*/
+
+/*undoButton.addEventListener("click", () => {
+    undoManager.undo();
+});
+
+redoButton.addEventListener("click", () => {
+    undoManager.redo();
+});*/
